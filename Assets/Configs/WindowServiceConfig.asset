@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2a1a34893f7471cad27c973622d4e9a, type: 3}
+  m_Name: WindowServiceConfig
+  m_EditorClassIdentifier: Assembly-CSharp::Core.UI.Windows.Config.WindowServiceConfig
+  windowContainerPrefab: {fileID: 5321890795665518623, guid: 9f51abf170604b7d9ebb952db853550e, type: 3}
+  inputBlockerPrefab: {fileID: 215603093163347098, guid: 0bb547f224aa4839bebb8a2bf6720a87, type: 3}
+  windows:
+  - id: 7
+    prefabReference:
+      m_AssetGUID: 414ea1f693326bd4fa600578cef99deb
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: 0
+    prefabReference:
+      m_AssetGUID: eb48ac2d9a4087048b6cc5ff0dde009c
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: 2
+    prefabReference:
+      m_AssetGUID: 4111316c18027fc47915a88ab5ee1162
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: 1
+    prefabReference:
+      m_AssetGUID: 7720759912b7fa244afe728b20c7c7f2
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: 3
+    prefabReference:
+      m_AssetGUID: 0d1330d99d30e704fbf2b829e51ac178
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: 6
+    prefabReference:
+      m_AssetGUID: 124b7a8c918ff66419eda95d9bf7726f
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0

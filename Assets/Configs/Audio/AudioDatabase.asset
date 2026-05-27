@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 111b6da4de404ccea3471473c8782a0c, type: 3}
+  m_Name: AudioDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::Core.Audio.Configs.AudioDatabase
+  ui:
+    <ButtonClick>k__BackingField: {fileID: 11400000, guid: 5c1a300ee942676458ce4ed5139d7938, type: 2}
+    <ButtonHover>k__BackingField: {fileID: 0}
+    <ButtonBack>k__BackingField: {fileID: 0}
+    <ButtonConfirm>k__BackingField: {fileID: 0}
+    <ButtonCancel>k__BackingField: {fileID: 0}
+    <Error>k__BackingField: {fileID: 0}
+    <PopupOpen>k__BackingField: {fileID: 0}
+    <PopupClose>k__BackingField: {fileID: 0}
+  music:
+    <MainMenu>k__BackingField: {fileID: 11400000, guid: 9c66ac8a96d811c478b8e0d9ef0043f7, type: 2}
+    <Gameplay>k__BackingField: {fileID: 0}
+    <Loading>k__BackingField: {fileID: 0}
+    <Victory>k__BackingField: {fileID: 0}
+    <Defeat>k__BackingField: {fileID: 0}
+  gameplay:
+    <PlayerJump>k__BackingField: {fileID: 0}
+    <PlayerLand>k__BackingField: {fileID: 0}
+    <PlayerHit>k__BackingField: {fileID: 0}
+    <PickupItem>k__BackingField: {fileID: 0}
+    <DropItem>k__BackingField: {fileID: 0}
+    <Attack>k__BackingField: {fileID: 0}
+    <Impact>k__BackingField: {fileID: 0}
+  ambience:
+    <CaveLoop>k__BackingField: {fileID: 0}
+    <WindLoop>k__BackingField: {fileID: 0}
+    <RainLoop>k__BackingField: {fileID: 0}
