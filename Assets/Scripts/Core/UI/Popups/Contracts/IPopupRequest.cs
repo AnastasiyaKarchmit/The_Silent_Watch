@@ -20,4 +20,23 @@ namespace Core.UI.Popups.Contracts
     {
         public static readonly PopupClosed Value = new();
     }
+    
+    public readonly struct TextInputPopupResult
+    {
+        public bool Confirmed { get; }
+        public string Text { get; }
+
+        public TextInputPopupResult(bool confirmed, string text)
+        {
+            Confirmed = confirmed;
+            Text = text;
+        }
+
+        public static TextInputPopupResult Cancelled =>
+            new(false, string.Empty);
+
+        public static TextInputPopupResult Confirm(string text) =>
+            new(true, text);
+    }
+    
 }

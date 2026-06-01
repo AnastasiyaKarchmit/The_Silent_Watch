@@ -12,6 +12,7 @@ namespace Core.UI.Windows.Data
         BootstrapLoadingScreen,
         PickupPopup,
         ConfirmationPopup,
-        MessagePopup
+        MessagePopup,
+        TextInputPopup
     }
 }

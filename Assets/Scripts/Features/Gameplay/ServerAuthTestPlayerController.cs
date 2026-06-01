@@ -5,30 +5,26 @@ using UnityEngine.InputSystem;
 namespace Features.Gameplay
 {
     [RequireComponent(typeof(NetworkIdentity))]
-    public sealed class NetworkTestPlayerController : NetworkBehaviour
+    public sealed class ServerAuthTestPlayerController : NetworkBehaviour
     {
         [Header("Movement")]
         [SerializeField] private float moveSpeed = 5f;
         [SerializeField] private float rotationSpeed = 12f;
 
-        [Header("Input Send")]
-        [SerializeField] private float sendRate = 20f;
+        [Header("Input")]
+        [SerializeField] private float inputSendRate = 20f;
 
-        [Header("Local Only")]
-        [SerializeField] private GameObject localOnlyObjects;
-
-        private Vector2 _serverMoveInput;
+        private Vector2 _serverInput;
         private Vector2 _lastSentInput;
-        private float _nextSendTime;
+        private float _nextInputSendTime;
 
         public override void OnStartClient()
         {
             base.OnStartClient();
 
-            Debug.Log($"[Player] OnStartClient | netId={netId} | isLocalPlayer={isLocalPlayer} | isOwned={isOwned}");
-
-            if (localOnlyObjects != null)
-                localOnlyObjects.SetActive(false);
+            Debug.Log(
+                $"[Player] OnStartClient | netId={netId} | " +
+                $"isLocalPlayer={isLocalPlayer} | isOwned={isOwned}");
         }
 
         public override void OnStartLocalPlayer()
@@ -36,16 +32,6 @@ namespace Features.Gameplay
             base.OnStartLocalPlayer();
 
             Debug.Log($"[Player] OnStartLocalPlayer | netId={netId}");
-
-            if (localOnlyObjects != null)
-                localOnlyObjects.SetActive(true);
-        }
-
-        public override void OnStartAuthority()
-        {
-            base.OnStartAuthority();
-
-            Debug.Log($"[Player] OnStartAuthority | netId={netId}");
         }
 
         private void Update()
@@ -56,38 +42,34 @@ namespace Features.Gameplay
             Vector2 input = ReadMoveInput();
 
             bool inputChanged = input != _lastSentInput;
-            bool sendTick = Time.time >= _nextSendTime;
+            bool sendTick = Time.time >= _nextInputSendTime;
 
             if (!inputChanged && !sendTick)
                 return;
 
             _lastSentInput = input;
-            _nextSendTime = Time.time + 1f / sendRate;
+            _nextInputSendTime = Time.time + 1f / inputSendRate;
 
-            CmdSetMoveInput(input);
+            CmdSetInput(input);
         }
 
-        [Command(requiresAuthority = false)]
-        private void CmdSetMoveInput(Vector2 input, NetworkConnectionToClient sender = null)
+        [Command]
+        private void CmdSetInput(Vector2 input)
         {
-            if (sender == null || sender.identity != netIdentity)
-            {
-                Debug.LogWarning($"[Player] Rejected input for netId={netId}");
-                return;
-            }
-
-            _serverMoveInput = Vector2.ClampMagnitude(input, 1f);
+            _serverInput = Vector2.ClampMagnitude(input, 1f);
         }
 
         [ServerCallback]
         private void FixedUpdate()
         {
-            Vector3 direction = new Vector3(_serverMoveInput.x, 0f, _serverMoveInput.y);
+            Vector3 direction = new Vector3(_serverInput.x, 0f, _serverInput.y);
 
             if (direction.sqrMagnitude <= 0.001f)
                 return;
 
-            transform.position += direction * (moveSpeed * Time.fixedDeltaTime);
+            direction.Normalize();
+
+            transform.position += direction * moveSpeed * Time.fixedDeltaTime;
 
             Quaternion targetRotation = Quaternion.LookRotation(direction, Vector3.up);
 
@@ -107,8 +89,8 @@ namespace Features.Gameplay
             {
                 if (keyboard.aKey.isPressed) input.x -= 1f;
                 if (keyboard.dKey.isPressed) input.x += 1f;
-                if (keyboard.sKey.isPressed) input.y -= 1f;
-                if (keyboard.wKey.isPressed) input.y += 1f;
+                if (keyboard.sKey.isPressed) input.y += 1f;
+                if (keyboard.wKey.isPressed) input.y -= 1f;
             }
 
             Gamepad gamepad = Gamepad.current;

@@ -6,6 +6,7 @@ using Core.Audio.Configs;
 using Core.Audio.Contracts;
 using Core.Audio.Runtime;
 using Core.Input.Runtime;
+using Core.Networking;
 using Core.Save;
 using Core.Save.JSON;
 using Core.Save.SaveStorage;
@@ -21,6 +22,9 @@ using Core.UI.Popups.Runtime.Handlers;
 using Core.UI.Popups.Runtime.Handlers.Core;
 using Core.UI.Windows.Config;
 using Core.UI.Windows.Runtime;
+using Features.MainMenu.Networking.Rooms;
+using Features.MainMenu.Networking.Rooms.Contracts;
+using Features.MainMenu.Networking.Rooms.Runtime;
 using Infrastructure.Factories;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -39,6 +43,8 @@ namespace Infrastructure.DI
         [SerializeField] private AppLifecycleService appLifecycleService;
         [SerializeField] private AudioServiceConfig audioServiceConfig;
         [SerializeField] private AudioDatabase audioDatabase;
+        [SerializeField] private Mirror.NetworkManager networkManager;
+        [SerializeField] private BackendConnectionConfig backendConnectionConfig;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -49,6 +55,7 @@ namespace Infrastructure.DI
             RegisterServices(builder);
             RegisterSaveSystem(builder);
             RegisterPopups(builder);
+            RegisterNetworking(builder);
         }
 
         private void RegisterSceneManagement(IContainerBuilder builder)
@@ -146,18 +153,31 @@ namespace Infrastructure.DI
             builder.Register<PopupService>(Lifetime.Scoped)
                 .As<IPopupService>()
                 .AsSelf();
-            
+
             builder.Register<TimedPopupHandler>(Lifetime.Scoped)
                 .As<IPopupHandler>()
-                .AsSelf();;
-            
+                .AsSelf();
+
             builder.Register<ConfirmationPopupHandler>(Lifetime.Scoped)
                 .As<IPopupHandler>()
-                .AsSelf();;
-            
+                .AsSelf(); 
+
             builder.Register<MessagePopupHandler>(Lifetime.Scoped)
                 .As<IPopupHandler>()
                 .AsSelf();
+
+            builder.Register<TextInputPopupHandler>(Lifetime.Scoped)
+                .As<IPopupHandler>()
+                .AsSelf();
+        }
+
+        private void RegisterNetworking(IContainerBuilder builder)
+        {
+            builder.RegisterInstance(networkManager);
+            builder.RegisterInstance(backendConnectionConfig);
+
+            builder.Register<MirrorConnectionService>(Lifetime.Singleton);
+            builder.Register<IRoomSessionService, RoomSessionService>(Lifetime.Singleton);
         }
     }
 }

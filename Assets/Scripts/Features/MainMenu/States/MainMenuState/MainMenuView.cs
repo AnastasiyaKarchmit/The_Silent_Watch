@@ -10,7 +10,8 @@ namespace Features.MainMenu.States.MainMenuState
 {
     public sealed class MainMenuView : BaseView
     {
-        [SerializeField] private Button playButton;
+        [SerializeField] private Button createRoomButton;
+        [SerializeField] private Button joinRoomButton;
         [SerializeField] private Button settingsButton;
         [SerializeField] private Button quitButton;
         [SerializeField] private TMP_Text titleText;
@@ -19,44 +20,33 @@ namespace Features.MainMenu.States.MainMenuState
         private readonly TimeSpan _buttonThrottle = TimeSpan.FromMilliseconds(500);
 
         public void Initialize(
-            ReactiveCommand<Unit> playCommand,
+            ReactiveCommand<Unit> createRoomCommand,
+            ReactiveCommand<Unit> joinRoomCommand,
             ReactiveCommand<Unit> settingsCommand,
             ReactiveCommand<Unit> quitCommand)
         {
             _disposables.Clear();
 
             if (titleText != null)
-                titleText.text = "Main Menu";
+                titleText.text = "The Silent Watch";
 
-            if (playButton != null)
-            {
-                Observable.FromEvent(
-                        handler => playButton.onClick.AddListener(handler.Invoke),
-                        handler => playButton.onClick.RemoveListener(handler.Invoke))
-                    .ThrottleFirst(_buttonThrottle)
-                    .Subscribe(_ => playCommand.Execute(Unit.Default))
-                    .AddTo(_disposables);
-            }
+            BindButton(createRoomButton, createRoomCommand);
+            BindButton(joinRoomButton, joinRoomCommand);
+            BindButton(settingsButton, settingsCommand);
+            BindButton(quitButton, quitCommand);
+        }
 
-            if (settingsButton != null)
-            {
-                Observable.FromEvent(
-                        handler => settingsButton.onClick.AddListener(handler.Invoke),
-                        handler => settingsButton.onClick.RemoveListener(handler.Invoke))
-                    .ThrottleFirst(_buttonThrottle)
-                    .Subscribe(_ => settingsCommand.Execute(Unit.Default))
-                    .AddTo(_disposables);
-            }
-            
-            if (quitButton != null)
-            {
-                Observable.FromEvent(
-                        handler => quitButton.onClick.AddListener(handler.Invoke),
-                        handler => quitButton.onClick.RemoveListener(handler.Invoke))
-                    .ThrottleFirst(_buttonThrottle)
-                    .Subscribe(_ => quitCommand.Execute(Unit.Default))
-                    .AddTo(_disposables);
-            }
+        private void BindButton(Button button, ReactiveCommand<Unit> command)
+        {
+            if (button == null)
+                return;
+
+            Observable.FromEvent(
+                    handler => button.onClick.AddListener(handler.Invoke),
+                    handler => button.onClick.RemoveListener(handler.Invoke))
+                .ThrottleFirst(_buttonThrottle)
+                .Subscribe(_ => command.Execute(Unit.Default))
+                .AddTo(_disposables);
         }
 
         public override UniTask HideAsync()

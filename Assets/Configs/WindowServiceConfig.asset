@@ -57,3 +57,31 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
+  - id: 10
+    prefabReference:
+      m_AssetGUID: f65a75c42d143094bb50fad5ee59b4f0
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: 9
+    prefabReference:
+      m_AssetGUID: d4f79f8141ebb994abd6dcbe815a2921
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: 11
+    prefabReference:
+      m_AssetGUID: fdd4f50b144fd544d877f9d92afc1767
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: 8
+    prefabReference:
+      m_AssetGUID: bfc19d480e66ee14fa581eacbb02ad43
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0

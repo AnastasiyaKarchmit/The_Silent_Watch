@@ -23,7 +23,12 @@ namespace Features.Bootstrap
         public async UniTask<AppStateExitResult> RunAsync(CancellationToken token)
         {
             await _presenter.RunAsync(token);
+            
+#if UNITY_SERVER
+            return AppStateExitResult.SwitchTo(AppStateId.Gameplay);
+#else
             return AppStateExitResult.SwitchTo(AppStateId.MainMenu);
+#endif
         }
 
         public UniTask ExitAsync(CancellationToken token)

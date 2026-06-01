@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.InputSystem;
 
 namespace Mirror.Examples.Tanks
 {
@@ -33,74 +34,162 @@ namespace Mirror.Examples.Tanks
             name = $"Player[{netId}|server]";
         }
 
-        void Update()
+        private void Update()
         {
-            // always update health bar.
-            // (SyncVar hook would only update on clients, not on server)
-            healthBar.text = new string('-', health);
+            UpdateHealthBar();
 
-            // take input from focused window only
-            if(!Application.isFocused) return;
+            if (!Application.isFocused)
+                return;
 
-            // movement for local player
-            if (isLocalPlayer)
-            {
-                // rotate
-                float horizontal = Input.GetAxis("Horizontal");
-                transform.Rotate(0, horizontal * rotationSpeed * Time.deltaTime, 0);
+            if (!isLocalPlayer)
+                return;
 
-                // move
-                float vertical = Input.GetAxis("Vertical");
-                Vector3 forward = transform.TransformDirection(Vector3.forward);
-                agent.velocity = forward * Mathf.Max(vertical, 0) * agent.speed;
-                animator.SetBool("Moving", agent.velocity != Vector3.zero);
+            Vector2 moveInput = ReadMoveInput();
 
-                // shoot
-                if (Input.GetKeyDown(shootKey))
-                {
-                    CmdFire();
-                }
-
-                RotateTurret();
-            }
+            RotateTank(moveInput.x);
+            MoveTank(moveInput.y);
+            HandleShooting();
+            RotateTurret();
         }
 
-        // this is called on the server
-        [Command]
-        void CmdFire()
+        private void UpdateHealthBar()
         {
-            GameObject projectile = Instantiate(projectilePrefab, projectileMount.position, projectileMount.rotation);
+            if (healthBar != null)
+                healthBar.text = new string('-', health);
+        }
+
+        private Vector2 ReadMoveInput()
+        {
+            Vector2 input = Vector2.zero;
+
+            Keyboard keyboard = Keyboard.current;
+
+            if (keyboard != null)
+            {
+                if (keyboard.aKey.isPressed) input.x -= 1f;
+                if (keyboard.dKey.isPressed) input.x += 1f;
+
+                if (keyboard.sKey.isPressed) input.y -= 1f;
+                if (keyboard.wKey.isPressed) input.y += 1f;
+            }
+
+            Gamepad gamepad = Gamepad.current;
+
+            if (gamepad != null)
+            {
+                Vector2 stickInput = gamepad.leftStick.ReadValue();
+
+                if (stickInput.sqrMagnitude > input.sqrMagnitude)
+                    input = stickInput;
+            }
+
+            return Vector2.ClampMagnitude(input, 1f);
+        }
+
+        private void RotateTank(float horizontalInput)
+        {
+            if (Mathf.Abs(horizontalInput) <= 0.01f)
+                return;
+
+            transform.Rotate(
+                0f,
+                horizontalInput * rotationSpeed * Time.deltaTime,
+                0f);
+        }
+
+        private void MoveTank(float verticalInput)
+        {
+            if (agent == null)
+                return;
+
+            float forwardInput = Mathf.Max(verticalInput, 0f);
+
+            Vector3 forward = transform.TransformDirection(Vector3.forward);
+            agent.velocity = forward * forwardInput * agent.speed;
+
+            if (animator != null)
+                animator.SetBool("Moving", agent.velocity != Vector3.zero);
+        }
+
+        private void HandleShooting()
+        {
+            bool shootPressed = false;
+
+            Keyboard keyboard = Keyboard.current;
+
+            if (keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
+                shootPressed = true;
+
+            Gamepad gamepad = Gamepad.current;
+
+            if (gamepad != null && gamepad.rightTrigger.wasPressedThisFrame)
+                shootPressed = true;
+
+            if (shootPressed)
+                CmdFire();
+        }
+
+        [Command]
+        private void CmdFire()
+        {
+            GameObject projectile = Instantiate(
+                projectilePrefab,
+                projectileMount.position,
+                projectileMount.rotation);
+
             NetworkServer.Spawn(projectile);
+
             RpcOnFire();
         }
 
-        // this is called on the tank that fired for all observers
         [ClientRpc]
-        void RpcOnFire()
+        private void RpcOnFire()
         {
-            animator.SetTrigger("Shoot");
+            if (animator != null)
+                animator.SetTrigger("Shoot");
         }
 
-        //[ServerCallback]
-        //void OnTriggerEnter(Collider other)
-        //{
-        //    if (other.GetComponent<Projectile>() != null)
-        //    {
-        //        --health;
-        //        if (health == 0)
-        //            NetworkServer.Destroy(gameObject);
-        //    }
-        //}
-
-        void RotateTurret()
+        private void RotateTurret()
         {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit, 100))
+            if (turret == null)
+                return;
+
+            Camera mainCamera = Camera.main;
+
+            if (mainCamera == null)
+                return;
+
+            Mouse mouse = Mouse.current;
+
+            if (mouse == null)
+                return;
+
+            Vector2 mousePosition = mouse.position.ReadValue();
+            Ray ray = mainCamera.ScreenPointToRay(mousePosition);
+
+            if (Physics.Raycast(ray, out RaycastHit hit, 100f))
             {
                 Debug.DrawLine(ray.origin, hit.point);
-                Vector3 lookRotation = new Vector3(hit.point.x, turret.transform.position.y, hit.point.z);
-                turret.transform.LookAt(lookRotation);
+
+                Vector3 lookPosition = new Vector3(
+                    hit.point.x,
+                    turret.position.y,
+                    hit.point.z);
+
+                turret.LookAt(lookPosition);
             }
+        }
+
+        [ServerCallback]
+        private void OnTriggerEnter(Collider other)
+        {
+            if (other.GetComponent<Projectile>() == null)
+                return;
+
+            health--;
+
+            if (health <= 0)
+                NetworkServer.Destroy(gameObject);
         }
     }
 }
