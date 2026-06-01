@@ -70,3 +70,19 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# ------------------------------
+# Silent Watch backend
+# ------------------------------
+
+# Keep backend project files tracked even though Unity .csproj files are ignored
+!SilentWatch.Backend/
+!SilentWatch.Backend/*.csproj
+!SilentWatch.Backend/*.sln
+
+# Backend build outputs
+SilentWatch.Backend/bin/
+SilentWatch.Backend/obj/
+
+# Local backend secrets
+SilentWatch.Backend/appsettings.Development.json
