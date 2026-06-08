@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Core.Audio.Contracts;
 using Core.Input.Contracts;
 using Core.Input.Runtime;
@@ -131,7 +132,6 @@ namespace Features.MainMenu.States.MainMenuState
                 .AddTo(_disposables);
         }
         
-        
         private async UniTask HandleCreateRoomClickedAsync()
         {
             if (_isHandlingCreateRoom)
@@ -145,46 +145,42 @@ namespace Features.MainMenu.States.MainMenuState
                 CancellationToken token = _roomFlowCts.Token;
 
                 RoomSessionData session =
-                    await _roomSessionService.CreateRoomAsync(
-                        playerName: "Host",
-                        cancellationToken: token);
+                    await RunWithBlockingPopupAsync(
+                        title: "Creating room",
+                        message:
+                        "Creating your room...\n\n" +
+                        "The backend may need a moment to wake up. Please wait.",
+                        cancelText: "Cancel",
+                        operation: ct => _roomSessionService.CreateRoomAsync(
+                            playerName: "Host",
+                            cancellationToken: ct),
+                        token: token);
 
-                UniTask<PopupClosed> popupTask = _popupService.ShowAsync(
-                    new MessagePopupRequest(
+                RoomSessionData readySession =
+                    await WaitForServerReadyWithPopupAsync(
                         title: "Room created",
                         message:
                         $"Room code: {session.RoomCode}\n\n" +
-                        "Give this code to the second player. " +
-                        "The game will start when they join.",
-                        closeText: "Cancel"),
-                    token);
+                        "Give this code to the second player.\n\n" +
+                        "Waiting for the second player. When they join, the server will be created automatically. " +
+                        "This can take a little time.",
+                        cancelText: "Cancel room",
+                        endRoomOnCancel: true,
+                        token: token);
 
-                UniTask<RoomSessionData> serverReadyTask =
-                    _roomSessionService.WaitForServerReadyAsync(token);
-
-                var result = await UniTask.WhenAny(popupTask, serverReadyTask);
-
-                if (result.winArgumentIndex == 0)
-                {
-                    CancelRoomFlow();
-                    return;
-                }
-
-                RoomSessionData readySession = result.result2;
                 ConnectAndEnterGameplay(readySession);
             }
             catch (OperationCanceledException)
             {
+                // Player cancelled.
             }
             catch (Exception exception)
             {
                 Debug.LogException(exception);
 
-                await _popupService.ShowAsync(
-                    new MessagePopupRequest(
-                        "Room creation failed",
-                        exception.Message,
-                        "Close"));
+                await ShowErrorPopupAsync(
+                    title: "Room creation failed",
+                    message: exception.Message);
             }
             finally
             {
@@ -216,37 +212,41 @@ namespace Features.MainMenu.States.MainMenuState
                 if (!inputResult.Confirmed || string.IsNullOrWhiteSpace(inputResult.Text))
                     return;
 
-                await _roomSessionService.JoinRoomAsync(
-                    inputResult.Text,
-                    playerName: "Client",
-                    cancellationToken: token);
-
-                await _popupService.ShowAsync(
-                    new TimedPopupRequest(
-                        icon: null,
-                        title: "Joined room",
-                        description: "Waiting for server...",
-                        amountText: string.Empty,
-                        duration: 1.5f),
-                    token);
+                await RunWithBlockingPopupAsync(
+                    title: "Joining room",
+                    message:
+                    "Checking room code...\n\n" +
+                    "Please wait.",
+                    cancelText: "Cancel",
+                    operation: ct => _roomSessionService.JoinRoomAsync(
+                        inputResult.Text,
+                        playerName: "Client",
+                        cancellationToken: ct),
+                    token: token);
 
                 RoomSessionData readySession =
-                    await _roomSessionService.WaitForServerReadyAsync(token);
+                    await WaitForServerReadyWithPopupAsync(
+                        title: "Room code accepted",
+                        message:
+                        "You joined the room.\n\n" +
+                        "The server is being created. You will enter the game automatically when everything is ready.",
+                        cancelText: "Leave room",
+                        endRoomOnCancel: true,
+                        token: token);
 
                 ConnectAndEnterGameplay(readySession);
             }
             catch (OperationCanceledException)
             {
+                // Player cancelled.
             }
             catch (Exception exception)
             {
                 Debug.LogException(exception);
 
-                await _popupService.ShowAsync(
-                    new MessagePopupRequest(
-                        "Join failed",
-                        exception.Message,
-                        "Close"));
+                await ShowErrorPopupAsync(
+                    title: "Join failed",
+                    message: GetFriendlyJoinError(exception));
             }
             finally
             {
@@ -301,12 +301,177 @@ namespace Features.MainMenu.States.MainMenuState
             _roomFlowCts = null;
         }
         
+        private async UniTask<RoomSessionData> WaitForServerReadyWithPopupAsync(
+            string title,
+            string message,
+            string cancelText,
+            bool endRoomOnCancel,
+            CancellationToken token)
+        {
+            using var popupCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+
+            Task<bool> popupTask = ShowBlockingMessagePopupAsync(
+                    title,
+                    message,
+                    cancelText,
+                    popupCts.Token)
+                .AsTask();
+
+            Task<RoomSessionData> serverReadyTask =
+                _roomSessionService.WaitForServerReadyAsync(token).AsTask();
+
+            try
+            {
+                Task completedTask = await Task.WhenAny(popupTask, serverReadyTask);
+
+                if (completedTask == popupTask)
+                {
+                    bool closedByUser = await popupTask;
+
+                    if (closedByUser && endRoomOnCancel)
+                        await TryEndRoomAsync();
+
+                    throw new OperationCanceledException();
+                }
+
+                return await serverReadyTask;
+            }
+            finally
+            {
+                popupCts.Cancel();
+                await SuppressPopupTaskAsync(popupTask);
+            }
+        }
+
+        private async UniTask<bool> ShowBlockingMessagePopupAsync(
+            string title,
+            string message,
+            string closeText,
+            CancellationToken token)
+        {
+            try
+            {
+                await _popupService.ShowAsync(
+                    new MessagePopupRequest(
+                        title: title,
+                        message: message,
+                        closeText: closeText),
+                    token);
+
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+        }
+
+        private async UniTask SuppressPopupTaskAsync(Task<bool> popupTask)
+        {
+            try
+            {
+                await popupTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Popup was closed by token. Expected.
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"[MainMenuPresenter] Popup task finished with error: {exception.Message}");
+            }
+        }
+
+        private async UniTask<T> RunWithBlockingPopupAsync<T>(
+            string title,
+            string message,
+            string cancelText,
+            Func<CancellationToken, UniTask<T>> operation,
+            CancellationToken token)
+        {
+            using var operationCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            using var popupCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+
+            Task<bool> popupTask = ShowBlockingMessagePopupAsync(
+                    title,
+                    message,
+                    cancelText,
+                    popupCts.Token)
+                .AsTask();
+
+            Task<T> operationTask = operation(operationCts.Token).AsTask();
+
+            try
+            {
+                Task completedTask = await Task.WhenAny(popupTask, operationTask);
+
+                if (completedTask == popupTask)
+                {
+                    bool closedByUser = await popupTask;
+
+                    if (closedByUser)
+                        operationCts.Cancel();
+
+                    throw new OperationCanceledException();
+                }
+
+                return await operationTask;
+            }
+            finally
+            {
+                popupCts.Cancel();
+                await SuppressPopupTaskAsync(popupTask);
+            }
+        }
+        
+        private async UniTask TryEndRoomAsync()
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                await _roomSessionService.EndRoomAsync(cts.Token);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"[MainMenuPresenter] Failed to end room: {exception.Message}");
+            }
+        }
+
+        private async UniTask ShowErrorPopupAsync(string title, string message)
+        {
+            await _popupService.ShowAsync(
+                new MessagePopupRequest(
+                    title: title,
+                    message: message,
+                    closeText: "Close"));
+        }
+
+        private string GetFriendlyJoinError(Exception exception)
+        {
+            string message = exception.Message;
+
+            if (message.Contains("409") ||
+                message.Contains("not joinable", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("Room is full", StringComparison.OrdinalIgnoreCase))
+            {
+                return "This room was cancelled, already started, or is no longer available.";
+            }
+
+            return message;
+        }
+        
+        
         public void Dispose()
         {
+            CancelRoomFlow();
+
             _createRoomClickedCommand.Dispose();
+            _joinRoomClickedCommand.Dispose();
             _playRequestedCommand.Dispose();
             _settingsCommand.Dispose();
+            _quitClickedCommand.Dispose();
             _quitRequestedCommand.Dispose();
+
             _disposables.Dispose();
         }
     }

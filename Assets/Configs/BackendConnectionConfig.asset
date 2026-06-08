@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c361453795264a5eb1a4e625e9cf357d, type: 3}
   m_Name: BackendConnectionConfig
   m_EditorClassIdentifier: Assembly-CSharp::Features.MainMenu.Networking.Rooms.BackendConnectionConfig
-  baseUrl: http://localhost:5227
+  baseUrl: https://the-silent-watch.onrender.com

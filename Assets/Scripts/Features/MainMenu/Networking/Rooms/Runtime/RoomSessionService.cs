@@ -150,8 +150,20 @@ namespace Features.MainMenu.Networking.Rooms.Runtime
                 if (session.HasServerEndpoint)
                     return session;
 
-                if (session.Status == "Failed" || session.Status == "Ended")
-                    throw new InvalidOperationException($"Room status is {session.Status}.");
+                if (session.Status == "Ended")
+                {
+                    throw new InvalidOperationException(
+                        "The room was cancelled or is no longer available.");
+                }
+
+                if (session.Status == "Failed")
+                {
+                    string error = string.IsNullOrWhiteSpace(session.Error)
+                        ? "Server creation failed."
+                        : session.Error;
+
+                    throw new InvalidOperationException(error);
+                }
 
                 await UniTask.Delay(
                     TimeSpan.FromSeconds(2),
@@ -270,6 +282,7 @@ namespace Features.MainMenu.Networking.Rooms.Runtime
             CurrentSession.Port = response.port > 0
                 ? (ushort)response.port
                 : default;
+            CurrentSession.Error = response.error;
         }
         
         private void EnsureSessionExists()
@@ -355,6 +368,7 @@ namespace Features.MainMenu.Networking.Rooms.Runtime
             public string status;
             public string host;
             public int port;
+            public string error;
         }
 
         [Serializable]

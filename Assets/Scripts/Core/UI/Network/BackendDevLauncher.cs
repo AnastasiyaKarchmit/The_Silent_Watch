@@ -11,6 +11,7 @@ namespace Core.UI.Network
     {
         private const string BackendRelativePath = "SilentWatch.Backend";
         private static Process _process;
+        private const bool UseLocalBackendInEditor = false;
 
         static BackendDevLauncher()
         {
@@ -20,6 +21,9 @@ namespace Core.UI.Network
 
         private static void OnPlayModeChanged(PlayModeStateChange state)
         {
+            if (!UseLocalBackendInEditor)
+                return;
+            
             if (state == PlayModeStateChange.EnteredPlayMode)
                 StartBackend();
         }
@@ -131,5 +135,5 @@ namespace Core.UI.Network
             }
         }
     }
-#endif
 }
+#endif

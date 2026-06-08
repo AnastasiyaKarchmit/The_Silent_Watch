@@ -7,6 +7,7 @@ namespace Features.MainMenu.Networking.Rooms.Data
         public string Status { get; set; }
         public string Host { get; set; }
         public ushort Port { get; set; }
+        public string Error { get; set; }
 
         public bool HasServerEndpoint =>
             !string.IsNullOrWhiteSpace(Host) && Port > 0;
