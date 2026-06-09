@@ -3,6 +3,8 @@ using System.Threading;
 using Core.AppStates.Contracts.State;
 using Core.AppStates.Data;
 using Cysharp.Threading.Tasks;
+using Features.Shared;
+using UnityEngine;
 
 namespace Features.Bootstrap
 {
@@ -17,13 +19,22 @@ namespace Features.Bootstrap
 
         public UniTask EnterAsync(object payload, CancellationToken token)
         {
+            if (RuntimeMode.IsDedicatedServer)
+            {
+                Debug.Log("[Bootstrap] Dedicated server detected. Skipping Bootstrap UI.");
+                return UniTask.CompletedTask;
+            }
+            
             return _presenter.EnterAsync(token);
         }
 
         public async UniTask<AppStateExitResult> RunAsync(CancellationToken token)
         {
-            await _presenter.RunAsync(token);
-            
+            if (!RuntimeMode.IsDedicatedServer)
+            {
+                await _presenter.RunAsync(token);
+            }
+
 #if UNITY_SERVER
             return AppStateExitResult.SwitchTo(AppStateId.Gameplay);
 #else
@@ -33,7 +44,8 @@ namespace Features.Bootstrap
 
         public UniTask ExitAsync(CancellationToken token)
         {
-            return _presenter.ExitAsync(token);
+            return !RuntimeMode.IsDedicatedServer ? 
+                _presenter.ExitAsync(token) : UniTask.CompletedTask;
         }
 
         public void Dispose()

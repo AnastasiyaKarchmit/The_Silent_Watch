@@ -1,75 +1,62 @@
+using System;
+using Cysharp.Threading.Tasks;
+using Features.Gameplay.Networking;
+using Features.Gameplay.Networking.Contracts;
 using Mirror;
 using UnityEngine;
+using VContainer;
 
 namespace Features
 {
     public sealed class SilentWatchNetworkManager : NetworkManager
     {
+        private NetworkPlayerSpawnRegistry _spawnRegistry;
+
+        [Inject]
+        public void Construct(NetworkPlayerSpawnRegistry spawnRegistry)
+        {
+            _spawnRegistry = spawnRegistry;
+        }
+
         public override void OnStartServer()
         {
             base.OnStartServer();
-            Debug.Log("[Mirror] Server started.");
-        }
-
-        public override void OnStopServer()
-        {
-            base.OnStopServer();
-            Debug.Log("[Mirror] Server stopped.");
-        }
-
-        public override void OnStartClient()
-        {
-            base.OnStartClient();
-            Debug.Log("[Mirror] Client started.");
-        }
-
-        public override void OnStopClient()
-        {
-            base.OnStopClient();
-            Debug.Log("[Mirror] Client stopped.");
-        }
-
-        public override void OnClientConnect()
-        {
-            base.OnClientConnect();
-            Debug.Log("[Mirror] Client connected successfully.");
-        }
-
-        public override void OnClientDisconnect()
-        {
-            base.OnClientDisconnect();
-            Debug.LogWarning("[Mirror] Client disconnected.");
-        }
-
-        public override void OnClientError(TransportError error, string reason)
-        {
-            base.OnClientError(error, reason);
-            Debug.LogError($"[Mirror] Client error: {error}. Reason: {reason}");
-        }
-
-        public override void OnServerConnect(NetworkConnectionToClient conn)
-        {
-            base.OnServerConnect(conn);
-            Debug.Log($"[Mirror] Server: client connected. ConnectionId={conn.connectionId}");
-        }
-
-        public override void OnServerDisconnect(NetworkConnectionToClient conn)
-        {
-            Debug.LogWarning($"[Mirror] Server: client disconnected. ConnectionId={conn.connectionId}");
-            base.OnServerDisconnect(conn);
+            Debug.Log("[NetworkManager] Server started.");
         }
 
         public override void OnServerAddPlayer(NetworkConnectionToClient conn)
         {
-            Transform start = GetStartPosition();
+            OnServerAddPlayerAsync(conn).Forget();
+        }
 
-            GameObject player = start != null
-                ? Instantiate(playerPrefab, start.position, start.rotation)
-                : Instantiate(playerPrefab);
+        private async UniTaskVoid OnServerAddPlayerAsync(NetworkConnectionToClient conn)
+        {
+            Debug.Log($"[NetworkManager] OnServerAddPlayer requested for connection {conn.connectionId}");
+
+            bool spawnerReady = await _spawnRegistry.WaitForSpawnerAsync(
+                TimeSpan.FromSeconds(10));
+
+            if (!spawnerReady)
+            {
+                Debug.LogError("[NetworkManager] Player spawner was not registered within timeout.");
+                return;
+            }
+
+            INetworkPlayerSpawner spawner = _spawnRegistry.CurrentSpawner;
+
+            GameObject player = spawner.CreatePlayer(playerPrefab, conn);
 
             NetworkServer.AddPlayerForConnection(conn, player);
 
-            Debug.Log($"[Mirror] Server: player spawned for connection {conn.connectionId}");
+            Debug.Log(
+                $"[NetworkManager] Spawned player for connection {conn.connectionId} " +
+                $"at {player.transform.position}, scene={player.scene.name}");
+        }
+
+        public override void OnServerDisconnect(NetworkConnectionToClient conn)
+        {
+            Debug.LogWarning($"[NetworkManager] Server disconnected client: {conn.connectionId}");
+            base.OnServerDisconnect(conn);
         }
     }
 }

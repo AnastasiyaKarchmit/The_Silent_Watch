@@ -3,25 +3,40 @@ using System.Threading;
 using Core.AppStates.Contracts.State;
 using Core.AppStates.Data;
 using Cysharp.Threading.Tasks;
+using Features.Gameplay.Networking;
+using Features.Shared;
 using R3;
+using UnityEngine;
 
 namespace Features.Gameplay
 {
     public class GameplayAppStateController : IAppStateController
     {
         private readonly GameplayFlowController _flowController;
+        private readonly GameplayNetworkSessionService _networkSessionService;
         
         private readonly CompositeDisposable _disposables = new();
         private UniTaskCompletionSource<AppStateExitResult> _completionSource;
-
-        public GameplayAppStateController(GameplayFlowController flowController)
+        
+        private bool _isDedicatedServer;
+        
+        public GameplayAppStateController(GameplayFlowController flowController,
+            GameplayNetworkSessionService networkSessionService)
         {
             _flowController = flowController ?? throw new ArgumentNullException(nameof(flowController));
+            _networkSessionService = networkSessionService ?? throw new ArgumentNullException(nameof(networkSessionService));
         }
 
         public async UniTask EnterAsync(object payload, CancellationToken token)
         {
+            _isDedicatedServer = RuntimeMode.IsDedicatedServer;
             _completionSource = new UniTaskCompletionSource<AppStateExitResult>();
+            
+            if (_isDedicatedServer)
+            {
+                Debug.Log("[GameplayAppState] Dedicated server mode. Skipping Gameplay UI flow.");
+                return;
+            }
             
             _flowController.BackToMenuRequested
                 .Subscribe(_ =>
@@ -32,10 +47,17 @@ namespace Features.Gameplay
                 .AddTo(_disposables);
 
             await _flowController.EnterAsync(token);
+            await _networkSessionService.EnterGameplayAsync(token);
         }
 
         public async UniTask<AppStateExitResult> RunAsync(CancellationToken token)
         {
+            if (_isDedicatedServer)
+            {
+                await UniTask.WaitUntilCanceled(token);
+                throw new OperationCanceledException(token);
+            }
+            
             await using var registration = token.Register(() =>
             {
                 _completionSource.TrySetCanceled(token);
@@ -44,10 +66,15 @@ namespace Features.Gameplay
             return await _completionSource.Task;
         }
 
-        public UniTask ExitAsync(CancellationToken token)
+        public async UniTask ExitAsync(CancellationToken token)
         {
             _disposables.Clear();
-            return _flowController.ExitAsync(token);
+
+            if (!_isDedicatedServer)
+            {
+                await _flowController.ExitAsync(token);
+                await _networkSessionService.ExitGameplayAsync(token);
+            }
         }
 
         public void Dispose()

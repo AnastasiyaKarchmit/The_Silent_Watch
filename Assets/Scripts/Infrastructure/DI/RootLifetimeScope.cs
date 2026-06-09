@@ -22,10 +22,13 @@ using Core.UI.Popups.Runtime.Handlers;
 using Core.UI.Popups.Runtime.Handlers.Core;
 using Core.UI.Windows.Config;
 using Core.UI.Windows.Runtime;
+using Features;
+using Features.Gameplay.Networking;
 using Features.MainMenu.Networking.Rooms;
 using Features.MainMenu.Networking.Rooms.Contracts;
 using Features.MainMenu.Networking.Rooms.Runtime;
 using Infrastructure.Factories;
+using Mirror;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
@@ -43,7 +46,7 @@ namespace Infrastructure.DI
         [SerializeField] private AppLifecycleService appLifecycleService;
         [SerializeField] private AudioServiceConfig audioServiceConfig;
         [SerializeField] private AudioDatabase audioDatabase;
-        [SerializeField] private Mirror.NetworkManager networkManager;
+        [SerializeField] private NetworkManager networkManager;
         [SerializeField] private BackendConnectionConfig backendConnectionConfig;
 
         protected override void Configure(IContainerBuilder builder)
@@ -173,7 +176,13 @@ namespace Infrastructure.DI
 
         private void RegisterNetworking(IContainerBuilder builder)
         {
-            builder.RegisterInstance(networkManager);
+            builder.Register<NetworkPlayerSpawnRegistry>(Lifetime.Singleton);
+            
+            builder.RegisterComponent(networkManager)
+                .As<NetworkManager>()
+                .As<SilentWatchNetworkManager>()
+                .AsSelf();
+            
             builder.RegisterInstance(backendConnectionConfig);
 
             builder.Register<MirrorConnectionService>(Lifetime.Singleton);
